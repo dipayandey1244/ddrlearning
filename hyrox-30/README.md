@@ -1,33 +1,29 @@
 # HYROX 30 — Training Companion
 
-A 30-day, five-days-per-week HYROX starter tracker. The app tracks the plan, workout completion, before/after feelings, perceived effort, duration, notes, and exportable records.
+A 30-day HYROX starter tracker with workout history and pre-/post-workout reflections.
 
 ## Features
-- 4-week beginner-oriented HYROX plan (5 sessions/week)
-- Before-workout check-in: mood, energy, motivation, readiness, free text
-- After-workout check-in: mood, energy, perceived effort, duration, notes
-- Dashboard and workout history
-- Local-first data storage with JSON export/import
-- Email notification hook via a secure server endpoint (no secrets in browser code)
-- Exercise reference links to the upstream exercise dataset
+- Four-week training plan and session completion tracking
+- Before-workout mood, energy, motivation and notes
+- After-workout mood, effort, duration, distance and reflections
+- Dashboard, history and JSON backup/import
+- Browser-local persistence
+- Optional workout-completion email integration via a separately deployed server endpoint
 
-## Run locally
-Open `index.html` in a modern browser or serve this folder with a static HTTP server, e.g. `python -m http.server 8000`.
+## Local use
+Open `index.html` in a modern browser or run `python -m http.server 8000` from this folder.
 
-## Data persistence
-The standalone front-end saves locally in the browser's localStorage. This survives browser restarts on the same browser/device, but is not cross-device or a backup. Use Export JSON regularly. To enable cross-device persistence, configure Supabase (SQL schema and setup in `DEPLOYMENT.md`).
+## Local data
+Logs and the optional endpoint URL are saved in localStorage in this browser on this device. Use Export JSON for backups. There is no cross-device sync.
 
-## Workout completion emails
-The front-end supports a configurable secure webhook URL. To enable email:
-1. Deploy the Supabase Edge Function described in `supabase/functions/workout-complete/index.ts`.
-2. Set server-side secrets `RESEND_API_KEY` and `NOTIFY_EMAIL`.
-3. Configure the app's notification endpoint in Settings.
-4. Use Supabase Auth and Row Level Security before storing personal records in a hosted database.
+## Email notifications
+The tracker only sends email if you enter an email address in the workout form and save a deployed HTTPS endpoint in Settings. The server endpoint example is under `email-endpoint/`.
+1. Deploy `hyrox-30/email-endpoint` as a Vercel project and configure its server-side variables. Follow `email-endpoint/README.md`.
+2. Use a Resend API key only in Vercel environment variables; never put it in the browser.
+3. Set `NOTIFY_EMAIL` to your inbox and enter the same address in the workout email field.
+4. Save the deployed endpoint URL in Settings. Use Test endpoint to check connectivity; then complete a workout to test actual delivery.
 
-Do not put SMTP passwords, Supabase service-role keys, or Resend API keys in the front-end.
+Email is not active until deployed and configured. The Test endpoint button checks reachability, not delivery. The current endpoint example is suitable for a personal prototype; add rate limiting and stronger authentication before broad public use.
 
-## Exercise dataset
-This app links to [hasaneyldrm/exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset), which documents 1,324 exercises. Its code/data structure uses MIT terms; image/GIF media is © Gym visual and has separate terms. This app does not redistribute their media. Refer to the dataset's [README and licensing section](https://github.com/hasaneyldrm/exercises-dataset#-license--use) before reuse.
-
-## Deployment
-See [DEPLOYMENT.md](DEPLOYMENT.md) for GitHub Pages and optional hosted persistence/email setup.
+## Exercise reference
+This app links to [hasaneyldrm/exercises-dataset](https://github.com/hasaneyldrm/exercises-dataset) and does not redistribute the dataset's GIF media. Check its terms before reuse.
