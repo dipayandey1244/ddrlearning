@@ -1,51 +1,42 @@
 // Vercel serverless endpoint example: api/workout-complete.ts
-// Deploy this in a separate Vercel project or host the function alongside a static site.
-// Required server environment variables: RESEND_API_KEY, NOTIFY_EMAIL, ALLOWED_ORIGIN
-// Optional: ENDPOINT_TOKEN (if using an authenticated webhook; the static site will need a safe token flow).
+// Secrets live in Vercel environment settings, never in the static tracker.
+// Required environment variables: RESEND_API_KEY, NOTIFY_EMAIL, ALLOWED_ORIGIN
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-function json(statusCode: number, body: unknown, origin: string | null) {
-  const allowed = process.env.ALLOWED_ORIGIN;
-  const headers: Record<string, string> = { "Content-Type": "application/json", "Vary": "Origin" };
-  if (origin && allowed && origin === allowed) {
-    headers["Access-Control-Allow-Origin"] = origin;
-    headers["Access-Control-Allow-Methods"] = "POST, OPTIONS";
-    headers["Access-Control-Allow-Headers"] = "Content-Type";
-  }
-  return { statusCode, headers, body: JSON.stringify(body) };
-}
-
 export default async function handler(req: any, res: any) {
-  const origin = req.headers.origin ?? null;
-  const allowed = process.env.ALLOWED_ORIGIN;
+  const origin = req.headers.origin ?? "";
+  const allowedOrigin = process.env.ALLOWED_ORIGIN;
+
+  if (origin && allowedOrigin && origin === allowedOrigin) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Vary", "Origin");
+  }
+
   if (req.method === "OPTIONS") {
-    if (origin && allowed && origin === allowed) {
-      res.setHeader("Access-Control-Allow-Origin", origin);
-      res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-      res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-      res.setHeader("Vary", "Origin");
-      return res.status(204).end();
-    }
-    return res.status(403).json({ error: "Origin not allowed" });
+    if (origin !== allowedOrigin) return res.status(403).json({ error: "Origin not allowed" });
+    return res.status(204).end();
   }
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-  if (!process.env.RESEND_API_KEY || !process.env.NOTIFY_EMAIL || !allowed) {
-    return res.status(500).json({ error: "Email endpoint is missing server configuration" });
+  if (!process.env.RESEND_API_KEY || !process.env.NOTIFY_EMAIL || !allowedOrigin) {
+    return res.status(500).json({ error: "Email service is not configured" });
   }
-  if (origin !== allowed) return res.status(403).json({ error: "Origin not allowed" });
+  if (origin !== allowedOrigin) return res.status(403).json({ error: "Origin not allowed" });
 
   let body = req.body;
   if (typeof body === "string") {
     try { body = JSON.parse(body); } catch { return res.status(400).json({ error: "Invalid JSON" }); }
   }
-  const to = typeof body?.to === "string" ? body.to.trim() : "";
+  const to = typeof body?.to === "string" ? body.to.trim().toLowerCase() : "";
+  const fixedInbox = process.env.NOTIFY_EMAIL.trim().toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return res.status(400).json({ error: "Valid recipient email required" });
+  // Prevent this public endpoint being used to send emails to arbitrary recipients.
+  if (to !== fixedInbox) return res.status(403).json({ error: "Recipient must match the configured notification inbox" });
 
   const workout = body?.workout ?? {};
   const session = body?.session ?? {};
-  const safe = (v: unknown, max = 1500) => String(v ?? "").replace(/[<>]/g, "").slice(0, max);
+  const safe = (v: unknown, max = 1000) => String(v ?? "").replace(/[<>]/g, "").slice(0, max);
   const subject = "HYROX workout completed: " + safe(workout.title || workout.day || "Training session", 100);
   const text = [
     "Your HYROX workout was saved.",
@@ -58,14 +49,16 @@ export default async function handler(req: any, res: any) {
     "Feeling before: " + safe(session.before?.mood || "", 80),
     "Feeling after: " + safe(session.after?.mood || "", 80),
     "",
-    "Pre-workout note: " + safe(session.before?.note || "", 1200),
+    "Pre-workout note: " + safe(session.before?.note || "", 1000),
     "",
-    "Post-workout reflection: " + safe(session.after?.note || "", 1200)
+    "Post-workout reflection: " + safe(session.after?.note || "", 1000)
   ].join("\n");
 
+  // Configure a verified sender domain before production. Replace this demo sender as needed.
+  const resend = new Resend(process.env.RESEND_API_KEY);
   const { error } = await resend.emails.send({
-    from: "HYROX Tracker <onboarding@resend.dev>",
-    to: [to],
+    from: process.env.EMAIL_FROM || "HYROX Tracker <onboarding@resend.dev>",
+    to: [fixedInbox],
     subject,
     text
   });
