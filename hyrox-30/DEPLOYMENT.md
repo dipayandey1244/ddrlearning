@@ -1,25 +1,21 @@
 # Deploy HYROX 30
 
-## Enable GitHub Pages (required once)
-The first Pages workflow run showed that Pages is not currently enabled/configured for this repository.
-
+## GitHub Pages
 1. Open https://github.com/dipayandey1244/ddrlearning/settings/pages
-2. Under **Build and deployment**, choose **GitHub Actions** as the source if offered. Save.
-3. Open https://github.com/dipayandey1244/ddrlearning/actions/workflows/pages.yml and choose **Run workflow** (or push a small change under `hyrox-30/`).
-4. Once the workflow succeeds, visit https://dipayandey1244.github.io/ddrlearning/hyrox-30/
+2. Under Build and deployment, choose GitHub Actions as the source.
+3. Check https://github.com/dipayandey1244/ddrlearning/actions.
+4. Expected site URL: https://dipayandey1244.github.io/ddrlearning/hyrox-30/
 
 ## Mobile access
-This is responsive and installable as a Progressive Web App (PWA). On the published HTTPS site:
-- iPhone: open in Safari → Share → Add to Home Screen.
-- Android: open in Chrome → ⋮ → Install app / Add to Home screen.
+Open the published HTTPS site in Safari or Chrome and use Add to Home Screen / Install app. The tracker is mobile responsive and uses local browser storage.
 
-The app shell is cached for offline/repeat launches where supported. Workout logs use browser localStorage and are specific to the device/browser profile.
+## Local data
+Logs are saved in localStorage on this browser/device. Export JSON for backups. There is no cross-device sync.
 
-## Saving data
-Local save works immediately and survives refreshes/browser restarts on the same browser profile. It does **not** sync phone to laptop. Export a JSON backup regularly. Cloud sync requires a database, login and row-level security; never put service-role keys in browser code.
+## Email after a workout
+The static site cannot send emails without a server. Deploy the sample Vercel + Resend endpoint in `email-endpoint/` and follow its README. Configure Resend and all secrets in Vercel, not in this repository. After deployment:
+- paste the function URL into Settings and save it;
+- enter the configured `NOTIFY_EMAIL` in the workout's optional email field;
+- use Test endpoint for reachability, then complete a session to test delivery.
 
-## Email after each workout
-In Settings, add your secure server endpoint URL. When an email address is entered, completion sends a JSON POST with `{ to, workout, session }`. You must deploy a secure endpoint that validates input and recipient, applies authentication/rate-limiting and sends via a server-side provider (e.g. Resend). Do not put provider keys in the frontend. Email is not active until an endpoint is configured and tested.
-
-## Exercise data source
-The app links to https://github.com/hasaneyldrm/exercises-dataset and does not bundle its media. The upstream README says code/data structure/instructions use MIT terms but GIF/image media is © Gym visual under separate terms. Review upstream LICENSE and NOTICE before redistributing media.
+The endpoint is not deployed by this repository commit. For broad public use, add rate limiting and stronger authentication.
